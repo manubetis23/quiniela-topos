@@ -25,3 +25,17 @@
 2026-02-25 20:53:06,043 - INFO - Calculados estimadores LAE heurisíticos para 2 partidos.
 127.0.0.1 - - [25/Feb/2026 20:53:06] "POST /api/predict-custom HTTP/1.1" 200 -
 2026-02-25 20:53:06,191 - INFO - 127.0.0.1 - - [25/Feb/2026 20:53:06] "POST /api/predict-custom HTTP/1.1" 200 -
+2026-02-25 20:58:50,332 - INFO - Calculados estimadores LAE heurisíticos para 14 partidos.
+127.0.0.1 - - [25/Feb/2026 20:58:51] "GET /api/prediccion HTTP/1.1" 200 -
+2026-02-25 20:58:51,129 - INFO - 127.0.0.1 - - [25/Feb/2026 20:58:51] "GET /api/prediccion HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 20:59:18] "GET /api/clasificacion HTTP/1.1" 200 -
+2026-02-25 20:59:18,538 - INFO - 127.0.0.1 - - [25/Feb/2026 20:59:18] "GET /api/clasificacion HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 20:59:18] "GET /api/evolucion-clasificacion HTTP/1.1" 200 -
+2026-02-25 20:59:18,840 - INFO - 127.0.0.1 - - [25/Feb/2026 20:59:18] "GET /api/evolucion-clasificacion HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 20:59:29] "GET /api/equipos HTTP/1.1" 200 -
+2026-02-25 20:59:29,486 - INFO - 127.0.0.1 - - [25/Feb/2026 20:59:29] "GET /api/equipos HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 20:59:31] "GET /api/stats/Albacete HTTP/1.1" 200 -
+2026-02-25 20:59:31,271 - INFO - 127.0.0.1 - - [25/Feb/2026 20:59:31] "GET /api/stats/Albacete HTTP/1.1" 200 -
+2026-02-25 20:59:38,737 - INFO - Calculados estimadores LAE heurisíticos para 14 partidos.
+127.0.0.1 - - [25/Feb/2026 20:59:39] "GET /api/prediccion HTTP/1.1" 200 -
+2026-02-25 20:59:39,557 - INFO - 127.0.0.1 - - [25/Feb/2026 20:59:39] "GET /api/prediccion HTTP/1.1" 200 -
