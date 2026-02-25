@@ -1,7 +1,7 @@
-from playwright.sync_api import sync_playwright
 import re
 
 def obtener_jornada_quiniela():
+    from playwright.sync_api import sync_playwright
     matches_dict = {}
     try:
         with sync_playwright() as p:

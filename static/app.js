@@ -55,6 +55,12 @@ function renderBoleto(data, container) {
     const dobles = data.filter(m => m.Tipo === 'Doble').length;
 
     if (data.length >= 14) {
+        // Calcular cuántos picks de alta rentabilidad hemos detectado
+        let rentables = 0;
+        data.forEach(m => {
+            if (m.Rentabilidad_1 >= 1.25 || m.Rentabilidad_X >= 1.25 || m.Rentabilidad_2 >= 1.25) rentables++;
+        });
+
         const summary = document.createElement('div');
         summary.className = 'boleto-summary';
         summary.innerHTML = `
@@ -70,6 +76,10 @@ function renderBoleto(data, container) {
                 <div class="summary-item">
                     <span class="summary-num">${triples}T ${dobles}D</span>
                     <span class="summary-label">Triples / Dobles</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-num" style="color:var(--accent)">${rentables} 💎</span>
+                    <span class="summary-label">Picks Muy Rentables</span>
                 </div>
             </div>
         `;
@@ -103,33 +113,54 @@ function renderBoleto(data, container) {
             const bX = (m.Bookie_PX * 100).toFixed(0);
             const b2 = (m.Bookie_P2 * 100).toFixed(0);
 
+            let l1 = 0, lX = 0, l2 = 0;
+            if (m.LAE_P1 !== undefined) {
+                l1 = (m.LAE_P1 * 100).toFixed(0);
+                lX = (m.LAE_PX * 100).toFixed(0);
+                l2 = (m.LAE_P2 * 100).toFixed(0);
+            }
+
             const iaFav = p1w > pXw && p1w > p2w ? '1' : (pXw > p1w && pXw > p2w ? 'X' : '2');
             const bookieFav = b1 > bX && b1 > b2 ? '1' : (bX > b1 && bX > b2 ? 'X' : '2');
+            const laeFav = l1 > lX && l1 > l2 ? '1' : (lX > l1 && lX > l2 ? 'X' : '2');
 
-            let alertHtml = '';
-            if (iaFav !== bookieFav || iaFav === 'X') {
-                alertHtml = `<span class="bookie-alert" title="El modelo difiere de las casas o prevé un empate difícil de ver">🚨 Sorpresa Potencial</span>`;
-            }
+            // Find rentability badges
+            let rentHtml = '';
+            if (m.Rentabilidad_1 >= 1.25) rentHtml += `<span class="rent-badge">💎 1 Muy Rentable (x${m.Rentabilidad_1.toFixed(1)})</span>`;
+            if (m.Rentabilidad_X >= 1.25) rentHtml += `<span class="rent-badge">💎 X Muy Rentable (x${m.Rentabilidad_X.toFixed(1)})</span>`;
+            if (m.Rentabilidad_2 >= 1.25) rentHtml += `<span class="rent-badge">💎 2 Muy Rentable (x${m.Rentabilidad_2.toFixed(1)})</span>`;
+
+            // Si el público ha hiper-apostado el favorito pero la IA no lo ve, es TRAMPA (Rentabilidad < 0.70)
+            if (m.Rentabilidad_1 <= 0.65) rentHtml += `<span class="trap-badge">⚠️ 1 Sobre-apostado</span>`;
+            if (m.Rentabilidad_X <= 0.65) rentHtml += `<span class="trap-badge">⚠️ X Sobre-apostado</span>`;
+            if (m.Rentabilidad_2 <= 0.65) rentHtml += `<span class="trap-badge">⚠️ 2 Sobre-apostado</span>`;
 
             bookieComparison = `
                 <div class="bookie-comparison">
-                    <div class="bookie-header"><span>⚖️ Diferencial: IA vs Cuotas de Mercado</span> ${alertHtml}</div>
-                    <div class="bookie-row">
+                    <div class="bookie-header">
+                        <span>📊 Análisis Público (LAE) vs IA vs Bookies</span> 
+                        <div class="rent-badges">${rentHtml}</div>
+                    </div>
+                    <div class="bookie-row ia-row">
                         <span class="bookie-label">🤖 IA:</span>
-                        <span class="val-1 ${iaFav === '1' ? 'val-fav' : ''}">${p1w}%</span>
-                        <span class="val-sep">|</span>
-                        <span class="val-x ${iaFav === 'X' ? 'val-fav' : ''}">${pXw}%</span>
-                        <span class="val-sep">|</span>
+                        <span class="val-1 ${iaFav === '1' ? 'val-fav' : ''}">${p1w}%</span><span class="val-sep">|</span>
+                        <span class="val-x ${iaFav === 'X' ? 'val-fav' : ''}">${pXw}%</span><span class="val-sep">|</span>
                         <span class="val-2 ${iaFav === '2' ? 'val-fav' : ''}">${p2w}%</span>
                     </div>
                     <div class="bookie-row">
                         <span class="bookie-label">🏦 Mercado:</span>
-                        <span class="val-1 ${bookieFav === '1' ? 'val-fav' : ''}">${b1}%</span>
-                        <span class="val-sep">|</span>
-                        <span class="val-x ${bookieFav === 'X' ? 'val-fav' : ''}">${bX}%</span>
-                        <span class="val-sep">|</span>
+                        <span class="val-1 ${bookieFav === '1' ? 'val-fav' : ''}">${b1}%</span><span class="val-sep">|</span>
+                        <span class="val-x ${bookieFav === 'X' ? 'val-fav' : ''}">${bX}%</span><span class="val-sep">|</span>
                         <span class="val-2 ${bookieFav === '2' ? 'val-fav' : ''}">${b2}%</span>
                     </div>
+                    ${m.LAE_P1 !== undefined ? `
+                    <div class="bookie-row lae-row">
+                        <span class="bookie-label">🧑‍🤝‍🧑 Público LAE:</span>
+                        <span class="val-1 ${laeFav === '1' ? 'val-fav' : ''}">${l1}%</span><span class="val-sep">|</span>
+                        <span class="val-x ${laeFav === 'X' ? 'val-fav' : ''}">${lX}%</span><span class="val-sep">|</span>
+                        <span class="val-2 ${laeFav === '2' ? 'val-fav' : ''}">${l2}%</span>
+                    </div>
+                    ` : ''}
                 </div>
             `;
         }

@@ -5,6 +5,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 from get_quiniela_matches import obtener_jornada_quiniela
+from lae_scraper import get_lae_percentages
 
 def build_dataset_for_prediction(matches, df_hist):
     print("Extrayendo métricas más recientes para los 15 equipos...")
@@ -398,12 +399,45 @@ def generar_quiniela_optima(return_json=False):
     
     resultados = []
     
+    # Pre-calcular el diccionario bookie para alimentar a LAE
+    bookie_dict = {}
+    for i in range(min(15, len(matches))):
+        home, away = matches[i]
+        bookie_dict[i] = {
+            'Home': home,
+            'Away': away,
+            'Bookie_P1': float(X_pred.iloc[i]['Prob_Home_Bookie']),
+            'Bookie_PX': float(X_pred.iloc[i]['Prob_Draw_Bookie']),
+            'Bookie_P2': float(X_pred.iloc[i]['Prob_Away_Bookie'])
+        }
+    
+    # Obtener estimación de apostadores LAE
+    lae_data = get_lae_percentages(bookie_dict)
+    
     for i in range(min(15, len(matches))):
         home, away = matches[i]
         
         p1 = float(probabilidades[i][0])
         pX = float(probabilidades[i][1])
         p2 = float(probabilidades[i][2])
+        
+        # Obtener Bookies
+        b1 = bookie_dict[i]['Bookie_P1']
+        bx = bookie_dict[i]['Bookie_PX']
+        b2 = bookie_dict[i]['Bookie_P2']
+        
+        # Obtener LAE
+        lae = lae_data.get(i, {'LAE_P1': 0.33, 'LAE_PX': 0.34, 'LAE_P2': 0.33})
+        l1 = lae['LAE_P1']
+        lx = lae['LAE_PX']
+        l2 = lae['LAE_P2']
+        
+        # Calcular Rentabilidad (R)
+        # R > 1.0 significa Sub-Apostado (El público paga poco pero la probabilidad es alta)
+        # R < 1.0 significa Sobre-Apostado (El público mete mucho dinero ciego, arruina la rentabilidad)
+        r1 = p1 / l1 if l1 > 0 else 1.0
+        rx = pX / lx if lx > 0 else 1.0
+        r2 = p2 / l2 if l2 > 0 else 1.0
         
         entropia = - (p1 * np.log2(p1 + 1e-9) + pX * np.log2(pX + 1e-9) + p2 * np.log2(p2 + 1e-9))
         
@@ -415,9 +449,15 @@ def generar_quiniela_optima(return_json=False):
             'Away': away,
             'Partido': f"{home} - {away}",
             'P1': round(p1, 4), 'PX': round(pX, 4), 'P2': round(p2, 4),
-            'Bookie_P1': round(float(X_pred.iloc[i]['Prob_Home_Bookie']), 4),
-            'Bookie_PX': round(float(X_pred.iloc[i]['Prob_Draw_Bookie']), 4),
-            'Bookie_P2': round(float(X_pred.iloc[i]['Prob_Away_Bookie']), 4),
+            'Bookie_P1': round(b1, 4),
+            'Bookie_PX': round(bx, 4),
+            'Bookie_P2': round(b2, 4),
+            'LAE_P1': round(l1, 4),
+            'LAE_PX': round(lx, 4),
+            'LAE_P2': round(l2, 4),
+            'Rentabilidad_1': round(r1, 2),
+            'Rentabilidad_X': round(rx, 2),
+            'Rentabilidad_2': round(r2, 2),
             'Incertidumbre': round(float(entropia), 4),
             'Explicacion': explicacion
         })
@@ -493,11 +533,41 @@ def predict_custom_matches(matches_list):
     X_pred = build_dataset_for_prediction(matches_list, df)
     probabilidades = model.predict_proba(X_pred)
     
+    # Pre-calcular el diccionario bookie para alimentar a LAE
+    bookie_dict = {}
+    for i, (home, away) in enumerate(matches_list):
+        bookie_dict[i] = {
+            'Home': home,
+            'Away': away,
+            'Bookie_P1': float(X_pred.iloc[i]['Prob_Home_Bookie']),
+            'Bookie_PX': float(X_pred.iloc[i]['Prob_Draw_Bookie']),
+            'Bookie_P2': float(X_pred.iloc[i]['Prob_Away_Bookie'])
+        }
+    
+    # Obtener estimación de apostadores LAE
+    lae_data = get_lae_percentages(bookie_dict)
+    
     resultados = []
     for i, (home, away) in enumerate(matches_list):
         p1 = float(probabilidades[i][0])
         pX = float(probabilidades[i][1])
         p2 = float(probabilidades[i][2])
+        
+        # Obtener Bookies
+        b1 = bookie_dict[i]['Bookie_P1']
+        bx = bookie_dict[i]['Bookie_PX']
+        b2 = bookie_dict[i]['Bookie_P2']
+        
+        # Obtener LAE
+        lae = lae_data.get(i, {'LAE_P1': 0.33, 'LAE_PX': 0.34, 'LAE_P2': 0.33})
+        l1 = lae['LAE_P1']
+        lx = lae['LAE_PX']
+        l2 = lae['LAE_P2']
+        
+        r1 = p1 / l1 if l1 > 0 else 1.0
+        rx = pX / lx if lx > 0 else 1.0
+        r2 = p2 / l2 if l2 > 0 else 1.0
+        
         entropia = - (p1 * np.log2(p1 + 1e-9) + pX * np.log2(pX + 1e-9) + p2 * np.log2(p2 + 1e-9))
         
         explicacion = generate_explanation(home, away, p1, pX, p2, df)
@@ -510,6 +580,15 @@ def predict_custom_matches(matches_list):
             'Home': home, 'Away': away,
             'Partido': f"{home} - {away}",
             'P1': round(p1, 4), 'PX': round(pX, 4), 'P2': round(p2, 4),
+            'Bookie_P1': round(b1, 4),
+            'Bookie_PX': round(bx, 4),
+            'Bookie_P2': round(b2, 4),
+            'LAE_P1': round(l1, 4),
+            'LAE_PX': round(lx, 4),
+            'LAE_P2': round(l2, 4),
+            'Rentabilidad_1': round(r1, 2),
+            'Rentabilidad_X': round(rx, 2),
+            'Rentabilidad_2': round(r2, 2),
             'Incertidumbre': round(float(entropia), 4),
             'Explicacion': explicacion,
             'Apuesta': orden[0][0],
