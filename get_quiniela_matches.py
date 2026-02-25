@@ -2,7 +2,7 @@ from playwright.sync_api import sync_playwright
 import re
 
 def obtener_jornada_quiniela():
-    matches = []
+    matches_dict = {}
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
@@ -13,27 +13,32 @@ def obtener_jornada_quiniela():
             # Buscar divs de partidos
             locs = page.locator("div[class*='partido']").all_inner_texts()
             
-            for index, l in enumerate(locs):
+            for l in locs:
                 line = l.replace("\n", " | ")
                 parts = line.split(" | ")
                 if len(parts) > 1 and " - " in parts[1]:
+                    # Extraer número de partido (1-15) del primer campo
+                    num_str = re.sub(r'[^0-9]', '', parts[0].strip())
+                    match_num = int(num_str) if num_str else None
+                    
                     match_str = parts[1].strip()
-                    # Normalizar nombres para que crucen con nuestra DB
                     equipos = match_str.split(" - ")
-                    if len(equipos) == 2:
+                    if len(equipos) == 2 and match_num is not None:
                         home, away = equipos[0].strip(), equipos[1].strip()
                         match_format = f"{home} - {away}"
-                        if match_format not in matches:
-                            matches.append(match_format)
+                        if match_num not in matches_dict:
+                            matches_dict[match_num] = match_format
                         
-                        if len(matches) == 15: # Solo necesitamos los 15 de la quiniela
+                        if len(matches_dict) == 15:
                             break
                             
             browser.close()
     except Exception as e:
         print(f"Error scraping jornada: {e}")
-        
-    return clean_names(matches)
+    
+    # Ordenar por número de partido (1-15)
+    ordered = [matches_dict[i] for i in sorted(matches_dict.keys())]
+    return clean_names(ordered)
 
 def clean_names(matches_list):
     # Diccionario inverso para cuadrar con nuestra DB

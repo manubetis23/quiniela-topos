@@ -83,7 +83,9 @@ body {
     -webkit-text-fill-color: transparent;
 }
 
-.accent { color: var(--accent); }
+.accent {
+    color: var(--accent);
+}
 
 .subtitle {
     color: var(--text-muted);
@@ -143,8 +145,15 @@ body {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .panel-header {
@@ -206,7 +215,9 @@ body {
     padding: 3rem;
 }
 
-.hidden { display: none !important; }
+.hidden {
+    display: none !important;
+}
 
 .spinner {
     width: 48px;
@@ -218,7 +229,11 @@ body {
     margin: 0 auto 1rem;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
 
 .loading p {
     color: var(--text-muted);
@@ -231,15 +246,96 @@ body {
     gap: 0.75rem;
 }
 
+/* ============ BOLETO SUMMARY ============ */
+.boleto-summary {
+    background: linear-gradient(135deg, rgba(34, 211, 238, 0.08), rgba(167, 139, 250, 0.06));
+    border: 1px solid rgba(34, 211, 238, 0.15);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.summary-items {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.summary-item {
+    text-align: center;
+}
+
+.summary-num {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--accent);
+}
+
+.summary-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* ============ PROBABILITY BARS ============ */
+.prob-bar-container {
+    display: flex;
+    height: 24px;
+    border-radius: 6px;
+    overflow: hidden;
+    width: 100%;
+    min-width: 200px;
+}
+
+.prob-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #fff;
+    transition: width 0.5s ease;
+    white-space: nowrap;
+}
+
+.prob-bar-1 {
+    background: rgba(34, 211, 238, 0.6);
+}
+
+.prob-bar-x {
+    background: rgba(251, 191, 36, 0.5);
+}
+
+.prob-bar-2 {
+    background: rgba(167, 139, 250, 0.5);
+}
+
+/* ============ PLENO CARD ============ */
+.pleno-card {
+    border: 1px solid rgba(251, 191, 36, 0.3) !important;
+    background: linear-gradient(135deg, var(--bg-card), rgba(251, 191, 36, 0.05)) !important;
+}
+
+.bet-pleno {
+    background: rgba(251, 191, 36, 0.15);
+    color: var(--gold);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+/* ============ MATCH CARD v3 ============ */
 .match-card {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     padding: 1rem 1.25rem;
     display: grid;
-    grid-template-columns: 30px 1fr auto auto;
+    grid-template-columns: 35px 1fr;
+    grid-template-rows: auto auto auto;
     align-items: center;
-    gap: 1rem;
+    gap: 0.75rem;
     transition: var(--transition);
 }
 
@@ -261,28 +357,18 @@ body {
     font-size: 0.95rem;
 }
 
-.match-teams .team-home { color: var(--text-primary); }
-.match-teams .team-sep { color: var(--text-muted); margin: 0 0.4rem; }
-.match-teams .team-away { color: var(--text-secondary); }
-
-.match-probs {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
+.match-teams .team-home {
+    color: var(--text-primary);
 }
 
-.prob {
-    font-size: 0.78rem;
-    padding: 0.3rem 0.6rem;
-    border-radius: 6px;
-    font-weight: 600;
-    min-width: 52px;
-    text-align: center;
+.match-teams .team-sep {
+    color: var(--text-muted);
+    margin: 0 0.4rem;
 }
 
-.prob-1 { background: rgba(34, 211, 238, 0.12); color: var(--accent); }
-.prob-x { background: rgba(251, 191, 36, 0.12); color: var(--gold); }
-.prob-2 { background: rgba(167, 139, 250, 0.12); color: var(--accent-2); }
+.match-teams .team-away {
+    color: var(--text-secondary);
+}
 
 .match-bet {
     font-size: 0.8rem;
@@ -291,11 +377,48 @@ body {
     border-radius: 6px;
     text-align: center;
     min-width: 80px;
+    grid-column: 1 / -1;
+    justify-self: start;
 }
 
-.bet-fijo { background: rgba(52, 211, 153, 0.12); color: var(--accent-3); border: 1px solid rgba(52, 211, 153, 0.2); }
-.bet-doble { background: rgba(251, 191, 36, 0.12); color: var(--gold); border: 1px solid rgba(251, 191, 36, 0.2); }
-.bet-triple { background: rgba(248, 113, 113, 0.12); color: var(--danger); border: 1px solid rgba(248, 113, 113, 0.2); }
+.bet-fijo {
+    background: rgba(52, 211, 153, 0.12);
+    color: var(--accent-3);
+    border: 1px solid rgba(52, 211, 153, 0.2);
+}
+
+.bet-doble {
+    background: rgba(251, 191, 36, 0.12);
+    color: var(--gold);
+    border: 1px solid rgba(251, 191, 36, 0.2);
+}
+
+.bet-triple {
+    background: rgba(248, 113, 113, 0.12);
+    color: var(--danger);
+    border: 1px solid rgba(248, 113, 113, 0.2);
+}
+
+.prob-bar-container {
+    grid-column: 1 / -1;
+}
+
+.match-explain {
+    grid-column: 1 / -1;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+    padding: 0.5rem 0.75rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 6px;
+    border-left: 2px solid var(--accent);
+}
+
+/* ============ FORM VISUAL ============ */
+.form-dot {
+    font-size: 0.85rem;
+    margin: 0 1px;
+}
 
 /* ============ BOLETO FORM ============ */
 .boleto-form {
@@ -376,21 +499,32 @@ body {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0 4px;
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.clasif-table thead,
+.clasif-table tbody,
+.clasif-table tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
 }
 
 .clasif-table th {
     text-align: left;
-    padding: 0.75rem 1rem;
+    padding: 0.6rem 0.5rem;
     color: var(--text-muted);
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
 
 .clasif-table td {
-    padding: 0.75rem 1rem;
-    font-size: 0.9rem;
+    padding: 0.6rem 0.5rem;
+    font-size: 0.82rem;
     background: var(--bg-card);
 }
 
@@ -417,13 +551,40 @@ body {
     font-size: 0.8rem;
 }
 
-.pos-1 { background: rgba(251, 191, 36, 0.15); color: var(--gold); }
-.pos-2 { background: rgba(192, 192, 192, 0.15); color: #c0c0c0; }
-.pos-3 { background: rgba(205, 127, 50, 0.15); color: #cd7f32; }
-.pos-champ { background: rgba(34, 211, 238, 0.1); color: var(--accent); }
-.pos-euro { background: rgba(52, 211, 153, 0.1); color: var(--accent-3); }
-.pos-releg { background: rgba(248, 113, 113, 0.1); color: var(--danger); }
-.pos-normal { background: var(--glass); color: var(--text-secondary); }
+.pos-1 {
+    background: rgba(251, 191, 36, 0.15);
+    color: var(--gold);
+}
+
+.pos-2 {
+    background: rgba(192, 192, 192, 0.15);
+    color: #c0c0c0;
+}
+
+.pos-3 {
+    background: rgba(205, 127, 50, 0.15);
+    color: #cd7f32;
+}
+
+.pos-champ {
+    background: rgba(34, 211, 238, 0.1);
+    color: var(--accent);
+}
+
+.pos-euro {
+    background: rgba(52, 211, 153, 0.1);
+    color: var(--accent-3);
+}
+
+.pos-releg {
+    background: rgba(248, 113, 113, 0.1);
+    color: var(--danger);
+}
+
+.pos-normal {
+    background: var(--glass);
+    color: var(--text-secondary);
+}
 
 .team-name {
     font-weight: 600;
@@ -434,18 +595,6 @@ body {
 .team-name:hover {
     color: var(--accent);
 }
-
-.form-badge {
-    display: inline-block;
-    padding: 0.25rem 0.6rem;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-
-.form-good { background: rgba(52, 211, 153, 0.12); color: var(--accent-3); }
-.form-mid { background: rgba(251, 191, 36, 0.12); color: var(--gold); }
-.form-bad { background: rgba(248, 113, 113, 0.12); color: var(--danger); }
 
 /* ============ GRÁFICAS ============ */
 .graficas-controls {
@@ -522,16 +671,39 @@ body {
         grid-template-columns: 25px 1fr;
         gap: 0.5rem;
     }
-    .match-probs, .match-bet {
+
+    .match-bet {
         grid-column: 1 / -1;
     }
+
+    .prob-bar-container {
+        grid-column: 1 / -1;
+        min-width: unset;
+    }
+
     .charts-grid {
         grid-template-columns: 1fr;
     }
+
+    .chart-card canvas {
+        min-height: 250px;
+    }
+
     .form-row {
         grid-template-columns: 25px 1fr;
     }
+
     .form-row .vs-label {
         display: none;
+    }
+
+    .clasif-table th,
+    .clasif-table td {
+        padding: 0.5rem 0.35rem;
+        font-size: 0.75rem;
+    }
+
+    .summary-items {
+        gap: 1rem;
     }
 }

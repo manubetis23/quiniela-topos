@@ -1,0 +1,2 @@
+from get_quiniela_matches import obtener_jornada_quiniela
+print(obtener_jornada_quiniela())
