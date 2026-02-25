@@ -34,7 +34,10 @@ def train_quiniela_model():
         'H2H_Home_Pts_L3',
         'Home_xG_Understat', 'Home_xGA_Understat', 'Home_xPTS_Understat',
         'Away_xG_Understat', 'Away_xGA_Understat', 'Away_xPTS_Understat',
-        'Prob_Home_Bookie', 'Prob_Draw_Bookie', 'Prob_Away_Bookie'
+        'Prob_Home_Bookie', 'Prob_Draw_Bookie', 'Prob_Away_Bookie',
+        'Home_ShotsOnTarget_Avg5', 'Away_ShotsOnTarget_Avg5',
+        'Home_Shots_Avg5', 'Away_Shots_Avg5',
+        'Home_Fouls_Avg5', 'Away_Fouls_Avg5'
     ]
 
     X = df_clean[predictoras]
@@ -63,11 +66,16 @@ def train_quiniela_model():
         'max_features': ['sqrt', 'log2']
     }
     
+    # Pesos de muestra (Sample Weights) para dar más importancia a la temporada actual
+    # Como el DataFrame está ordenado cronológicamente, los últimos índices son los más recientes.
+    # Vamos a crear una curva de pesos desde 1.0 (hace 5 años) hasta 3.0 (ahora)
+    weights_train = np.linspace(1.0, 3.0, len(X_train))
+    
     rf_base = RandomForestClassifier(class_weight='balanced', random_state=42)
     grid_search = GridSearchCV(estimator=rf_base, param_grid=param_grid, 
                                cv=3, n_jobs=-1, scoring='accuracy', verbose=1)
     
-    grid_search.fit(X_train, y_train)
+    grid_search.fit(X_train, y_train, sample_weight=weights_train)
     
     best_rf = grid_search.best_estimator_
     print("\n¡Mejores hiperparámetros encontrados!")
@@ -106,7 +114,11 @@ def train_quiniela_model():
     plt.tight_layout()
     plt.savefig('quiniela_importancia_variables_py.png')
     
-    print("\nGraficas de evaluación guardadas en PNG.")
+    # 6. Guardar Modelo para Producción
+    import joblib
+    joblib.dump(best_rf, 'quiniela_rf_model.pkl')
+    print("\nModelo final optimizado guardado como 'quiniela_rf_model.pkl'.")
+    print("Graficas de evaluación guardadas en PNG.")
 
 if __name__ == "__main__":
     train_quiniela_model()

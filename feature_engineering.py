@@ -89,6 +89,9 @@ def feature_engineering():
                 'last_5_results': [], 
                 'last_3_home_results': [],
                 'last_3_away_results': [],
+                'last_5_shots_on_target': [],
+                'last_5_shots': [],
+                'last_5_fouls': [],
                 'last_match_date': parse_date("01/08/2025"), # Pre-temporada default
             }
         if t not in h2h_stats:
@@ -137,17 +140,42 @@ def feature_engineering():
         
         # Understat integracion
         'Home_xG_Understat': [], 'Home_xGA_Understat': [], 'Home_xPTS_Understat': [],
-        'Away_xG_Understat': [], 'Away_xGA_Understat': [], 'Away_xPTS_Understat': []
+        'Away_xG_Understat': [], 'Away_xGA_Understat': [], 'Away_xPTS_Understat': [],
+        
+        # Nuevas features de stats de partido (Medias moviles de 5 partidos)
+        'Home_ShotsOnTarget_Avg5': [], 'Away_ShotsOnTarget_Avg5': [],
+        'Home_Shots_Avg5': [], 'Away_Shots_Avg5': [],
+        'Home_Fouls_Avg5': [], 'Away_Fouls_Avg5': []
     }
+
+    current_season = None
 
     for idx, row in df.iterrows():
         home = row['HomeTeam']
         away = row['AwayTeam']
         date_obj = row['DateObj']
+        try:
+            season = row['Season']
+        except KeyError:
+            # Fallback for old datasets
+            season = "2425" if date_obj.year >= 2024 else "2324"
         
         init_team(home)
         init_team(away)
         init_h2h(home, away)
+        
+        # RESET stats when season changes!
+        if current_season != season:
+            current_season = season
+            for t in team_stats:
+                team_stats[t]['points'] = 0
+                team_stats[t]['goals_scored'] = 0
+                team_stats[t]['goals_conceded'] = 0
+                team_stats[t]['home_points'] = 0
+                team_stats[t]['away_points'] = 0
+                team_stats[t]['matches_played'] = 0
+                team_stats[t]['home_matches'] = 0
+                team_stats[t]['away_matches'] = 0
         
         # --- A. Extraer estado ANTES del partido ---
         current_standings = get_standings()
@@ -191,6 +219,18 @@ def feature_engineering():
         features['Away_xG_Understat'].append(u_away['xG_season'])
         features['Away_xGA_Understat'].append(u_away['xGA_season'])
         features['Away_xPTS_Understat'].append(u_away['xpts_season'])
+        
+        # Match Stats Averages
+        def get_avg(team, stat_key, default_val=0):
+            arr = team_stats[team][stat_key]
+            return sum(arr) / len(arr) if len(arr) > 0 else default_val
+            
+        features['Home_ShotsOnTarget_Avg5'].append(get_avg(home, 'last_5_shots_on_target', 4.0)) # 4.0 is approx La Liga avg
+        features['Away_ShotsOnTarget_Avg5'].append(get_avg(away, 'last_5_shots_on_target', 4.0))
+        features['Home_Shots_Avg5'].append(get_avg(home, 'last_5_shots', 12.0))
+        features['Away_Shots_Avg5'].append(get_avg(away, 'last_5_shots', 12.0))
+        features['Home_Fouls_Avg5'].append(get_avg(home, 'last_5_fouls', 13.0))
+        features['Away_Fouls_Avg5'].append(get_avg(away, 'last_5_fouls', 13.0))
         
         # --- B. Actualizar estado DESPUÉS del partido ---
         fthg = row['FTHG']
@@ -237,6 +277,20 @@ def feature_engineering():
             
         h2h_stats[home][away].append(h_pts)
         h2h_stats[away][home].append(a_pts)
+        
+        # Actualizar Match Stats (con cuidado de los NaNs)
+        def update_stat(team_name, stat_key, val):
+            if pd.notna(val):
+                team_stats[team_name][stat_key].append(val)
+                if len(team_stats[team_name][stat_key]) > 5:
+                    team_stats[team_name][stat_key].pop(0)
+
+        update_stat(home, 'last_5_shots_on_target', row.get('HST', pd.NA))
+        update_stat(away, 'last_5_shots_on_target', row.get('AST', pd.NA))
+        update_stat(home, 'last_5_shots', row.get('HS', pd.NA))
+        update_stat(away, 'last_5_shots', row.get('AS', pd.NA))
+        update_stat(home, 'last_5_fouls', row.get('HF', pd.NA))
+        update_stat(away, 'last_5_fouls', row.get('AF', pd.NA))
 
     # Añadir nuevas features al Dataframe mediante pd.concat para evitar PerformanceWarning
     feature_df = pd.DataFrame(features)

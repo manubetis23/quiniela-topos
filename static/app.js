@@ -97,6 +97,43 @@ function renderBoleto(data, container) {
         const pXw = (m.PX * 100).toFixed(0);
         const p2w = (m.P2 * 100).toFixed(0);
 
+        let bookieComparison = '';
+        if (m.Bookie_P1 !== undefined) {
+            const b1 = (m.Bookie_P1 * 100).toFixed(0);
+            const bX = (m.Bookie_PX * 100).toFixed(0);
+            const b2 = (m.Bookie_P2 * 100).toFixed(0);
+
+            const iaFav = p1w > pXw && p1w > p2w ? '1' : (pXw > p1w && pXw > p2w ? 'X' : '2');
+            const bookieFav = b1 > bX && b1 > b2 ? '1' : (bX > b1 && bX > b2 ? 'X' : '2');
+
+            let alertHtml = '';
+            if (iaFav !== bookieFav || iaFav === 'X') {
+                alertHtml = `<span class="bookie-alert" title="El modelo difiere de las casas o prevé un empate difícil de ver">🚨 Sorpresa Potencial</span>`;
+            }
+
+            bookieComparison = `
+                <div class="bookie-comparison">
+                    <div class="bookie-header"><span>⚖️ Diferencial: IA vs Cuotas de Mercado</span> ${alertHtml}</div>
+                    <div class="bookie-row">
+                        <span class="bookie-label">🤖 IA:</span>
+                        <span class="val-1 ${iaFav === '1' ? 'val-fav' : ''}">${p1w}%</span>
+                        <span class="val-sep">|</span>
+                        <span class="val-x ${iaFav === 'X' ? 'val-fav' : ''}">${pXw}%</span>
+                        <span class="val-sep">|</span>
+                        <span class="val-2 ${iaFav === '2' ? 'val-fav' : ''}">${p2w}%</span>
+                    </div>
+                    <div class="bookie-row">
+                        <span class="bookie-label">🏦 Mercado:</span>
+                        <span class="val-1 ${bookieFav === '1' ? 'val-fav' : ''}">${b1}%</span>
+                        <span class="val-sep">|</span>
+                        <span class="val-x ${bookieFav === 'X' ? 'val-fav' : ''}">${bX}%</span>
+                        <span class="val-sep">|</span>
+                        <span class="val-2 ${bookieFav === '2' ? 'val-fav' : ''}">${b2}%</span>
+                    </div>
+                </div>
+            `;
+        }
+
         const card = document.createElement('div');
         card.className = 'match-card';
         if (m.Tipo === 'Pleno') card.classList.add('pleno-card');
@@ -114,6 +151,7 @@ function renderBoleto(data, container) {
                 <div class="prob-bar prob-bar-x" style="width:${pXw}%">${pXw > 12 ? 'X:' + pXw + '%' : ''}</div>
                 <div class="prob-bar prob-bar-2" style="width:${p2w}%">${p2w > 12 ? '2:' + p2w + '%' : ''}</div>
             </div>
+            ${bookieComparison}
             ${explicacion}
             <div class="match-bet ${tipoClass}">${m.Apuesta} (${m.Tipo})</div>
         `;
@@ -250,12 +288,21 @@ function renderClasificacion(liga) {
     data.forEach((team, idx) => {
         const pos = idx + 1;
         let posClass = 'pos-normal';
-        if (pos === 1) posClass = 'pos-1';
-        else if (pos === 2) posClass = 'pos-2';
-        else if (pos === 3) posClass = 'pos-3';
-        else if (pos <= 4) posClass = 'pos-champ';
-        else if (pos <= 6) posClass = 'pos-euro';
-        else if (pos > totalTeams - 3) posClass = 'pos-releg';
+        if (liga === 'primera') {
+            if (pos === 1) posClass = 'pos-1';
+            else if (pos === 2) posClass = 'pos-2';
+            else if (pos === 3) posClass = 'pos-3';
+            else if (pos <= 4) posClass = 'pos-champ';
+            else if (pos <= 6) posClass = 'pos-euro';
+            else if (pos > totalTeams - 3) posClass = 'pos-releg';
+        } else {
+            // Segunda
+            if (pos === 1) posClass = 'pos-1';
+            else if (pos === 2) posClass = 'pos-2';
+            else if (pos <= 2) posClass = 'pos-ascenso';
+            else if (pos <= 6) posClass = 'pos-playoff';
+            else if (pos > totalTeams - 4) posClass = 'pos-releg';
+        }
 
         const dgSign = team.DG > 0 ? '+' : '';
 

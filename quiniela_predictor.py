@@ -15,7 +15,10 @@ def build_dataset_for_prediction(matches, df_hist):
         'Home_Played_Euro_Midweek', 'Away_Played_Euro_Midweek', 'H2H_Home_Pts_L3',
         'Home_xG_Understat', 'Home_xGA_Understat', 'Home_xPTS_Understat',
         'Away_xG_Understat', 'Away_xGA_Understat', 'Away_xPTS_Understat',
-        'Prob_Home_Bookie', 'Prob_Draw_Bookie', 'Prob_Away_Bookie'
+        'Prob_Home_Bookie', 'Prob_Draw_Bookie', 'Prob_Away_Bookie',
+        'Home_ShotsOnTarget_Avg5', 'Away_ShotsOnTarget_Avg5',
+        'Home_Shots_Avg5', 'Away_Shots_Avg5',
+        'Home_Fouls_Avg5', 'Away_Fouls_Avg5'
     ]
     
     # Calcular los promedios globales por si nos encontramos equipos de Segunda (imputación)
@@ -37,6 +40,9 @@ def build_dataset_for_prediction(matches, df_hist):
                 fila['Home_xG_Understat'] = ultimo_h['Home_xG_Understat']
                 fila['Home_xGA_Understat'] = ultimo_h['Home_xGA_Understat']
                 fila['Home_xPTS_Understat'] = ultimo_h['Home_xPTS_Understat']
+                fila['Home_ShotsOnTarget_Avg5'] = ultimo_h['Home_ShotsOnTarget_Avg5']
+                fila['Home_Shots_Avg5'] = ultimo_h['Home_Shots_Avg5']
+                fila['Home_Fouls_Avg5'] = ultimo_h['Home_Fouls_Avg5']
             else:
                 fila['Home_Rank_Pre'] = ultimo_h['Away_Rank_Pre']
                 fila['Home_Form_L5'] = ultimo_h['Away_Form_L5']
@@ -44,6 +50,9 @@ def build_dataset_for_prediction(matches, df_hist):
                 fila['Home_xG_Understat'] = ultimo_h['Away_xG_Understat']
                 fila['Home_xGA_Understat'] = ultimo_h['Away_xGA_Understat']
                 fila['Home_xPTS_Understat'] = ultimo_h['Away_xPTS_Understat']
+                fila['Home_ShotsOnTarget_Avg5'] = ultimo_h['Away_ShotsOnTarget_Avg5']
+                fila['Home_Shots_Avg5'] = ultimo_h['Away_Shots_Avg5']
+                fila['Home_Fouls_Avg5'] = ultimo_h['Away_Fouls_Avg5']
                 
             fila['Home_Rest_Days'] = 7 # Promedio predeterminado
             fila['Home_Played_Euro_Midweek'] = 0
@@ -58,6 +67,9 @@ def build_dataset_for_prediction(matches, df_hist):
             fila['Home_xG_Understat'] = medias['Home_xG_Understat']
             fila['Home_xGA_Understat'] = medias['Home_xGA_Understat']
             fila['Home_xPTS_Understat'] = medias['Home_xPTS_Understat']
+            fila['Home_ShotsOnTarget_Avg5'] = medias['Home_ShotsOnTarget_Avg5']
+            fila['Home_Shots_Avg5'] = medias['Home_Shots_Avg5']
+            fila['Home_Fouls_Avg5'] = medias['Home_Fouls_Avg5']
 
         # --- DATOS VISITANTE (AWAY) ---
         hist_a = df_hist[(df_hist['HomeTeam'] == away) | (df_hist['AwayTeam'] == away)]
@@ -70,6 +82,9 @@ def build_dataset_for_prediction(matches, df_hist):
                 fila['Away_xG_Understat'] = ultimo_a['Away_xG_Understat']
                 fila['Away_xGA_Understat'] = ultimo_a['Away_xGA_Understat']
                 fila['Away_xPTS_Understat'] = ultimo_a['Away_xPTS_Understat']
+                fila['Away_ShotsOnTarget_Avg5'] = ultimo_a['Away_ShotsOnTarget_Avg5']
+                fila['Away_Shots_Avg5'] = ultimo_a['Away_Shots_Avg5']
+                fila['Away_Fouls_Avg5'] = ultimo_a['Away_Fouls_Avg5']
             else:
                 fila['Away_Rank_Pre'] = ultimo_a['Home_Rank_Pre']
                 fila['Away_Form_L5'] = ultimo_a['Home_Form_L5']
@@ -77,6 +92,9 @@ def build_dataset_for_prediction(matches, df_hist):
                 fila['Away_xG_Understat'] = ultimo_a['Home_xG_Understat']
                 fila['Away_xGA_Understat'] = ultimo_a['Home_xGA_Understat']
                 fila['Away_xPTS_Understat'] = ultimo_a['Home_xPTS_Understat']
+                fila['Away_ShotsOnTarget_Avg5'] = ultimo_a['Home_ShotsOnTarget_Avg5']
+                fila['Away_Shots_Avg5'] = ultimo_a['Home_Shots_Avg5']
+                fila['Away_Fouls_Avg5'] = ultimo_a['Home_Fouls_Avg5']
                 
             fila['Away_Rest_Days'] = 7
             fila['Away_Played_Euro_Midweek'] = 0
@@ -89,13 +107,23 @@ def build_dataset_for_prediction(matches, df_hist):
             fila['Away_xG_Understat'] = medias['Away_xG_Understat']
             fila['Away_xGA_Understat'] = medias['Away_xGA_Understat']
             fila['Away_xPTS_Understat'] = medias['Away_xPTS_Understat']
+            fila['Away_ShotsOnTarget_Avg5'] = medias['Away_ShotsOnTarget_Avg5']
+            fila['Away_Shots_Avg5'] = medias['Away_Shots_Avg5']
+            fila['Away_Fouls_Avg5'] = medias['Away_Fouls_Avg5']
 
         # Extras: H2H y Cuotas
-        # Asignamos cuota neutral para partidos no registrados, salvo que saquemos de api
+        # Asignamos cuota pseudo-bookie realista basada en el estado de forma para la simulación IA vs Casas
+        pt_diff = (fila['Home_Form_L5'] + fila['Home_Form_HomeL3']) - (fila['Away_Form_L5'] + fila['Away_Form_AwayL3'])
+        ph = max(0.20, min(0.75, 0.45 + pt_diff * 0.04))
+        pd_ = max(0.15, min(0.35, 0.28 - abs(pt_diff) * 0.015))
+        pa = max(0.10, 1.0 - ph - pd_)
+        # Normalizar a 1.0 por flotantes
+        total = ph + pd_ + pa
+        fila['Prob_Home_Bookie'] = ph / total
+        fila['Prob_Draw_Bookie'] = pd_ / total
+        fila['Prob_Away_Bookie'] = pa / total
+        
         fila['H2H_Home_Pts_L3'] = medias['H2H_Home_Pts_L3']
-        fila['Prob_Home_Bookie'] = 0.38
-        fila['Prob_Draw_Bookie'] = 0.31
-        fila['Prob_Away_Bookie'] = 0.31
         
         filas_prediccion.append(fila)
         
@@ -107,6 +135,11 @@ def build_dataset_for_prediction(matches, df_hist):
 def _compute_league_standings(df_hist):
     """Compute per-league standings with post-match points."""
     df_hist = df_hist.copy()
+    
+    if 'Season' in df_hist.columns:
+        latest_season = df_hist['Season'].max()
+        df_hist = df_hist[df_hist['Season'] == latest_season]
+        
     if 'DateObj' not in df_hist.columns:
         df_hist['DateObj'] = pd.to_datetime(df_hist['Date'], format='%d/%m/%Y')
     
@@ -292,10 +325,15 @@ def generate_explanation(home, away, p1, pX, p2, df_hist):
         rank = ctx[f'{prefix}_rank']
         total = ctx[f'{prefix}_total_teams']
         liga_name = ctx[f'{prefix}_liga']
-        releg_threshold = total - 2  # Last 3 for both leagues
+        releg_threshold = total - 3 if liga_name == 'La Liga 2' else total - 2
+        liga_s = '1ª' if liga_name == 'La Liga' else '2ª'
+        
         if rank >= releg_threshold:
-            liga_s = '1ª' if liga_name == 'La Liga' else '2ª'
             parts.append(f"⚠️ {team} {rank}º/{total} en {liga_s} (descenso)")
+        elif rank <= 2 and liga_name == 'La Liga 2':
+            parts.append(f"🔝 {team} en ascenso directo ({rank}º)")
+        elif rank <= 6 and liga_name == 'La Liga 2':
+            parts.append(f"⬆️ {team} en zona playoff ({rank}º)")
     
     # Form
     hf, af = ctx['home_form_pts'], ctx['away_form_pts']
@@ -377,6 +415,9 @@ def generar_quiniela_optima(return_json=False):
             'Away': away,
             'Partido': f"{home} - {away}",
             'P1': round(p1, 4), 'PX': round(pX, 4), 'P2': round(p2, 4),
+            'Bookie_P1': round(float(X_pred.iloc[i]['Prob_Home_Bookie']), 4),
+            'Bookie_PX': round(float(X_pred.iloc[i]['Prob_Draw_Bookie']), 4),
+            'Bookie_P2': round(float(X_pred.iloc[i]['Prob_Away_Bookie']), 4),
             'Incertidumbre': round(float(entropia), 4),
             'Explicacion': explicacion
         })

@@ -6,28 +6,37 @@ import ssl
 # Bypass SSL verify for macOS Python installers
 ssl._create_default_https_context = ssl._create_unverified_context
 
-def load_football_data(season="2526"):
-    print("Recopilando datos de La Liga (Primera y Segunda)...")
+def load_football_data(seasons=["2122", "2223", "2324", "2425", "2526"]):
+    print(f"Recopilando datos históricos de La Liga (Primera y Segunda) para temporadas: {', '.join(seasons)}...")
     
-    # URLs directas a los CSVs de football-data.co.uk (no bloquean)
-    url_primera = f"https://www.football-data.co.uk/mmz4281/{season}/SP1.csv"
-    url_segunda = f"https://www.football-data.co.uk/mmz4281/{season}/SP2.csv"
+    all_df_primera = []
+    all_df_segunda = []
     
-    try:
-        df_primera = pd.read_csv(url_primera)
-        df_primera['Competicion'] = 'La Liga'
-        print(f"La Liga ({season}): {len(df_primera)} partidos cargados.")
-    except Exception as e:
-        print(f"Error cargando Primera: {e}")
-        df_primera = None
+    for season in seasons:
+        # URLs directas a los CSVs de football-data.co.uk (no bloquean)
+        url_primera = f"https://www.football-data.co.uk/mmz4281/{season}/SP1.csv"
+        url_segunda = f"https://www.football-data.co.uk/mmz4281/{season}/SP2.csv"
         
-    try:
-        df_segunda = pd.read_csv(url_segunda)
-        df_segunda['Competicion'] = 'La Liga 2'
-        print(f"Segunda ({season}): {len(df_segunda)} partidos cargados.")
-    except Exception as e:
-        print(f"Error cargando Segunda: {e}")
-        df_segunda = None
+        try:
+            df_p = pd.read_csv(url_primera)
+            df_p['Competicion'] = 'La Liga'
+            df_p['Season'] = season
+            all_df_primera.append(df_p)
+            print(f"La Liga ({season}): {len(df_p)} partidos cargados.")
+        except Exception as e:
+            print(f"Error cargando Primera temporada {season}: {e}")
+            
+        try:
+            df_s = pd.read_csv(url_segunda)
+            df_s['Competicion'] = 'La Liga 2'
+            df_s['Season'] = season
+            all_df_segunda.append(df_s)
+            print(f"Segunda ({season}): {len(df_s)} partidos cargados.")
+        except Exception as e:
+            print(f"Error cargando Segunda temporada {season}: {e}")
+            
+    df_primera = pd.concat(all_df_primera, ignore_index=True) if all_df_primera else None
+    df_segunda = pd.concat(all_df_segunda, ignore_index=True) if all_df_segunda else None
         
     return df_primera, df_segunda
 
@@ -52,7 +61,8 @@ def save_to_db(df_primera, df_segunda, db_path="quiniela_db.sqlite"):
     conn.close()
 
 if __name__ == "__main__":
-    df1, df2 = load_football_data("2526")
+    # Descargar las últimas 5 temporadas para entrenar el modelo
+    df1, df2 = load_football_data()
     if df1 is not None or df2 is not None:
         save_to_db(df1, df2)
     else:
