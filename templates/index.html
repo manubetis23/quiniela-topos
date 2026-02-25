@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiniela Topos — Dashboard IA</title>
+    <meta name="description"
+        content="Dashboard de predicción de la Quiniela española de la Peña Los Topos. Machine Learning y estadísticas avanzadas.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <span class="logo-icon">🐀</span>
+                <h1>Quiniela <span class="accent">Topos</span></h1>
+            </div>
+            <p class="subtitle">Peña Los Topos • Predicciones con IA • Primera y Segunda División</p>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="tabs" id="navTabs">
+        <button class="tab active" data-tab="prediccion" id="tabPrediccion">🎯 Predicción Actual</button>
+        <button class="tab" data-tab="boleto" id="tabBoleto">📝 Boleto Manual</button>
+        <button class="tab" data-tab="clasificacion" id="tabClasificacion">🏆 Clasificación</button>
+        <button class="tab" data-tab="graficas" id="tabGraficas">📊 Gráficas</button>
+    </nav>
+
+    <!-- Content Panels -->
+    <main class="main">
+        <!-- Panel: Predicción Actual -->
+        <section class="panel active" id="panelPrediccion">
+            <div class="panel-header">
+                <h2>🎯 Predicción de la Jornada Actual</h2>
+                <button class="btn-primary" id="btnCargarPrediccion" onclick="cargarPrediccion()">
+                    <span class="btn-icon">🔄</span> Obtener Predicción en Vivo
+                </button>
+            </div>
+            <div id="prediccionLoading" class="loading hidden">
+                <div class="spinner"></div>
+                <p>Conectando con eduardolosilla.es y procesando el modelo ML...</p>
+            </div>
+            <div id="prediccionContent" class="boleto-grid"></div>
+        </section>
+
+        <!-- Panel: Boleto Manual -->
+        <section class="panel" id="panelBoleto">
+            <div class="panel-header">
+                <h2>📝 Introduce tu Boleto</h2>
+                <p class="panel-desc">Escribe los nombres de los equipos tal como aparecen en la base de datos</p>
+            </div>
+            <div class="boleto-form" id="boletoForm"></div>
+            <button class="btn-primary btn-predict" onclick="predecirBoletoManual()">
+                <span class="btn-icon">🧠</span> Analizar con IA
+            </button>
+            <div id="boletoResultado" class="boleto-grid"></div>
+        </section>
+
+        <!-- Panel: Clasificación -->
+        <section class="panel" id="panelClasificacion">
+            <div class="panel-header">
+                <h2>🏆 Clasificación Actual</h2>
+                <div class="liga-toggle">
+                    <button class="btn-liga active" onclick="mostrarLiga('primera')" id="btnPrimera">La Liga</button>
+                    <button class="btn-liga" onclick="mostrarLiga('segunda')" id="btnSegunda">La Liga 2</button>
+                </div>
+            </div>
+            <div id="clasificacionContent"></div>
+        </section>
+
+        <!-- Panel: Gráficas -->
+        <section class="panel" id="panelGraficas">
+            <div class="panel-header">
+                <h2>📊 Análisis Visual</h2>
+            </div>
+            <div class="graficas-controls">
+                <select id="selectEquipo" class="select-equipo" onchange="cargarStatsEquipo()">
+                    <option value="">Selecciona un equipo...</option>
+                </select>
+            </div>
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3>Evolución de Puntos</h3>
+                    <canvas id="chartPuntos"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Forma Reciente (Últimos 5)</h3>
+                    <canvas id="chartForma"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Goles Marcados vs Recibidos</h3>
+                    <canvas id="chartGoles"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>xG vs xGA por Partido</h3>
+                    <canvas id="chartXG"></canvas>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>Quiniela Topos v2.0 — Peña Los Topos • Modelo: Random Forest (GridSearchCV) • Datos: football-data.co.uk +
+            Understat</p>
+    </footer>
+
+    <script src="/static/app.js"></script>
+</body>
+
+</html>

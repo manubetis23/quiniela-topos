@@ -1,0 +1,13 @@
+env/
+__pycache__/
+*.pyc
+.DS_Store
+*.sqlite
+update.log
+sofascore_*.json
+sofa.json
+rapidapi_error.png
+quiniela_confusion_matrix.png
+quiniela_distribucion.png
+quiniela_importancia_variables_py.png
+quiniela_patrones.png
