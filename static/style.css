@@ -355,6 +355,10 @@ body {
 .match-teams {
     font-weight: 600;
     font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex-wrap: wrap;
 }
 
 .match-teams .team-home {
@@ -418,6 +422,31 @@ body {
 .form-dot {
     font-size: 0.85rem;
     margin: 0 1px;
+}
+
+/* ============ CONFIDENCE BADGE ============ */
+.conf-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.2rem 0.5rem;
+    border-radius: 12px;
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.conf-high {
+    background: rgba(52, 211, 153, 0.12);
+    color: var(--accent-3);
+}
+
+.conf-mid {
+    background: rgba(251, 191, 36, 0.12);
+    color: var(--gold);
+}
+
+.conf-low {
+    background: rgba(248, 113, 113, 0.12);
+    color: var(--danger);
 }
 
 /* ============ BOLETO FORM ============ */

@@ -224,20 +224,18 @@ def api_evolucion():
         
         evolution = {}
         for team in all_teams:
+            team_matches = df[(df['HomeTeam'] == team) | (df['AwayTeam'] == team)].sort_values('DateObj')
+            pts_acum = 0
             team_points = []
-            home_rows = df[df['HomeTeam'] == team][['DateObj', 'Home_Points_Pre']].rename(
-                columns={'Home_Points_Pre': 'pts'})
-            away_rows = df[df['AwayTeam'] == team][['DateObj', 'Away_Points_Pre']].rename(
-                columns={'Away_Points_Pre': 'pts'})
-            
-            combined = pd.concat([home_rows, away_rows]).sort_values('DateObj')
-            
-            for _, row in combined.iterrows():
+            for _, row in team_matches.iterrows():
+                is_home = row['HomeTeam'] == team
+                won = (is_home and row['FTR'] == 'H') or (not is_home and row['FTR'] == 'A')
+                drew = row['FTR'] == 'D'
+                pts_acum += 3 if won else (1 if drew else 0)
                 team_points.append({
                     'fecha': row['DateObj'].strftime('%d/%m'),
-                    'puntos': int(row['pts']) if pd.notna(row['pts']) else 0
+                    'puntos': pts_acum
                 })
-            
             evolution[team] = team_points
         
         return jsonify({'status': 'ok', 'evolution': evolution, 'teams': all_teams})

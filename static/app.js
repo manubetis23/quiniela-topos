@@ -80,6 +80,12 @@ function renderBoleto(data, container) {
         const tipoClass = m.Tipo === 'Triple' ? 'bet-triple' : m.Tipo === 'Doble' ? 'bet-doble' : m.Tipo === 'Pleno' ? 'bet-pleno' : 'bet-fijo';
         const maxProb = Math.max(m.P1, m.PX, m.P2);
 
+        // Confidence meter
+        let confIcon, confLabel, confClass;
+        if (maxProb > 0.60) { confIcon = '🟢'; confLabel = 'Alta confianza'; confClass = 'conf-high'; }
+        else if (maxProb > 0.45) { confIcon = '🟡'; confLabel = 'Media'; confClass = 'conf-mid'; }
+        else { confIcon = '🔴'; confLabel = 'Incierto'; confClass = 'conf-low'; }
+
         // Generar explicación contextual
         let explicacion = '';
         if (m.Explicacion) {
@@ -101,6 +107,7 @@ function renderBoleto(data, container) {
                 <span class="team-home">${m.Home}</span>
                 <span class="team-sep">vs</span>
                 <span class="team-away">${m.Away}</span>
+                <span class="conf-badge ${confClass}" title="${confLabel}">${confIcon} ${(maxProb * 100).toFixed(0)}%</span>
             </div>
             <div class="prob-bar-container">
                 <div class="prob-bar prob-bar-1" style="width:${p1w}%">${p1w > 12 ? '1:' + p1w + '%' : ''}</div>
@@ -268,7 +275,67 @@ function renderClasificacion(liga) {
     });
 
     html += '</tbody></table>';
+
+    // Add evolution chart container
+    html += `<div class="chart-card" style="margin-top:1.5rem;">
+        <h3>📈 Evolución de Puntos — Top 6</h3>
+        <canvas id="chartEvolucion"></canvas>
+    </div>`;
+
     container.innerHTML = html;
+
+    // Load evolution data for top 6 teams
+    const top6 = data.slice(0, 6).map(t => t.Equipo);
+    loadEvolutionChart(top6);
+}
+
+let chartEvolucion = null;
+
+async function loadEvolutionChart(teams) {
+    try {
+        const res = await fetch('/api/evolucion-clasificacion');
+        const json = await res.json();
+        if (json.status !== 'ok') return;
+
+        const colors = ['#22d3ee', '#fbbf24', '#f87171', '#34d399', '#a78bfa', '#fb923c'];
+
+        const maxLen = Math.max(...teams.map(t => (json.evolution[t] || []).length));
+        const labels = (json.evolution[teams[0]] || []).map(p => p.fecha);
+
+        const datasets = teams.map((team, i) => ({
+            label: team,
+            data: (json.evolution[team] || []).map(p => p.puntos),
+            borderColor: colors[i],
+            backgroundColor: 'transparent',
+            tension: 0.3,
+            pointRadius: 2,
+            pointHoverRadius: 5,
+            borderWidth: 2
+        }));
+
+        if (chartEvolucion) chartEvolucion.destroy();
+
+        const ctx = document.getElementById('chartEvolucion');
+        if (!ctx) return;
+
+        chartEvolucion = new Chart(ctx, {
+            type: 'line',
+            data: { labels, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: '#d1d5db', font: { size: 11 } } }
+                },
+                scales: {
+                    x: { ticks: { color: '#9ca3af', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.03)' } },
+                    y: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' }, title: { display: true, text: 'Puntos', color: '#9ca3af' } }
+                }
+            }
+        });
+    } catch (e) {
+        console.warn('Error loading evolution chart:', e);
+    }
 }
 
 function verEquipo(equipo) {
