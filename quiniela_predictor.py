@@ -104,11 +104,61 @@ def build_dataset_for_prediction(matches, df_hist):
     df_pred = df_pred[predictoras]
     return df_pred
 
+def _compute_league_standings(df_hist):
+    """Compute per-league standings with post-match points."""
+    df_hist = df_hist.copy()
+    if 'DateObj' not in df_hist.columns:
+        df_hist['DateObj'] = pd.to_datetime(df_hist['Date'], format='%d/%m/%Y')
+    
+    all_teams = set(df_hist['HomeTeam'].unique()) | set(df_hist['AwayTeam'].unique())
+    standings = {}
+    
+    for team in all_teams:
+        team_matches = df_hist[(df_hist['HomeTeam'] == team) | (df_hist['AwayTeam'] == team)].sort_values('DateObj')
+        if team_matches.empty:
+            continue
+        
+        last = team_matches.iloc[-1]
+        liga = str(last.get('Competicion', 'La Liga'))
+        is_home = last['HomeTeam'] == team
+        pts_pre = last['Home_Points_Pre'] if is_home else last['Away_Points_Pre']
+        result = last['FTR']
+        pts_add = 3 if (is_home and result == 'H') or (not is_home and result == 'A') else (1 if result == 'D' else 0)
+        pts = (int(pts_pre) if pd.notna(pts_pre) else 0) + pts_add
+        
+        # Goal difference
+        home_g = df_hist[df_hist['HomeTeam'] == team]
+        away_g = df_hist[df_hist['AwayTeam'] == team]
+        gf = int(home_g['FTHG'].sum() + away_g['FTAG'].sum())
+        gc = int(home_g['FTAG'].sum() + away_g['FTHG'].sum())
+        
+        standings[team] = {'pts': pts, 'dg': gf - gc, 'liga': liga}
+    
+    # Sort within each league
+    for liga in ['La Liga', 'La Liga 2']:
+        league_teams = [(t, s) for t, s in standings.items() if s['liga'] == liga]
+        league_teams.sort(key=lambda x: (-x[1]['pts'], -x[1]['dg']))
+        for rank, (team, _) in enumerate(league_teams, 1):
+            standings[team]['rank'] = rank
+            standings[team]['total_teams'] = len(league_teams)
+    
+    return standings
+
+# Cache standings to avoid recomputing for every match
+_standings_cache = {}
+
 def generate_context_data(home, away, df_hist):
     """Extract contextual data about both teams for explanation generation."""
     ctx = {'home': home, 'away': away}
     
-    df_hist['DateObj'] = pd.to_datetime(df_hist['Date'], format='%d/%m/%Y')
+    if 'DateObj' not in df_hist.columns:
+        df_hist['DateObj'] = pd.to_datetime(df_hist['Date'], format='%d/%m/%Y')
+    
+    # Compute per-league standings once
+    global _standings_cache
+    if not _standings_cache:
+        _standings_cache = _compute_league_standings(df_hist)
+    standings = _standings_cache
     
     for team, prefix in [(home, 'home'), (away, 'away')]:
         matches = df_hist[(df_hist['HomeTeam'] == team) | (df_hist['AwayTeam'] == team)].sort_values('DateObj')
@@ -120,18 +170,25 @@ def generate_context_data(home, away, df_hist):
             ctx[f'{prefix}_gf_avg'] = 0
             ctx[f'{prefix}_gc_avg'] = 0
             ctx[f'{prefix}_liga'] = 'Desconocida'
+            ctx[f'{prefix}_total_teams'] = 20
             continue
         
-        last = matches.iloc[-1]
-        is_home = last['HomeTeam'] == team
-        pts_pre = last['Home_Points_Pre'] if is_home else last['Away_Points_Pre']
-        result = last['FTR']
-        pts_add = 3 if (is_home and result == 'H') or (not is_home and result == 'A') else (1 if result == 'D' else 0)
-        ctx[f'{prefix}_pts'] = int(pts_pre) + pts_add if pd.notna(pts_pre) else 0
-        
-        rank_pre = last['Home_Rank_Pre'] if is_home else last['Away_Rank_Pre']
-        ctx[f'{prefix}_rank'] = int(rank_pre) if pd.notna(rank_pre) else 20
-        ctx[f'{prefix}_liga'] = str(last.get('Competicion', 'La Liga'))
+        # Use standings for rank, points, league
+        if team in standings:
+            ctx[f'{prefix}_pts'] = standings[team]['pts']
+            ctx[f'{prefix}_rank'] = standings[team]['rank']
+            ctx[f'{prefix}_liga'] = standings[team]['liga']
+            ctx[f'{prefix}_total_teams'] = standings[team]['total_teams']
+        else:
+            last = matches.iloc[-1]
+            is_home = last['HomeTeam'] == team
+            pts_pre = last['Home_Points_Pre'] if is_home else last['Away_Points_Pre']
+            result = last['FTR']
+            pts_add = 3 if (is_home and result == 'H') or (not is_home and result == 'A') else (1 if result == 'D' else 0)
+            ctx[f'{prefix}_pts'] = int(pts_pre) + pts_add if pd.notna(pts_pre) else 0
+            ctx[f'{prefix}_rank'] = 20
+            ctx[f'{prefix}_liga'] = str(last.get('Competicion', 'La Liga'))
+            ctx[f'{prefix}_total_teams'] = 20
         
         # Form last 5
         last5 = matches.tail(5)
@@ -198,29 +255,47 @@ def generate_context_data(home, away, df_hist):
 
 def generate_explanation(home, away, p1, pX, p2, df_hist):
     """Generate a human-readable explanation of why the AI predicts these percentages."""
+    global _standings_cache
+    _standings_cache = {}  # Reset cache for fresh data
+    
     ctx = generate_context_data(home, away, df_hist)
     
     parts = []
     max_prob = max(p1, pX, p2)
-    fav = home if p1 == max_prob else ('Empate' if pX == max_prob else away)
     
-    # Position context
     hr, ar = ctx['home_rank'], ctx['away_rank']
     hp, ap = ctx['home_pts'], ctx['away_pts']
-    if hr <= 4 and ar > 15:
-        parts.append(f"{home} es {hr}º ({hp} pts) vs {away} {ar}º ({ap} pts)")
-    elif ar <= 4 and hr > 15:
-        parts.append(f"{away} es {ar}º ({ap} pts) jugando contra {home} {hr}º ({hp} pts)")
-    elif abs(hr - ar) > 8:
-        parts.append(f"Gran diferencia en liga: {home} {hr}º vs {away} {ar}º")
-    else:
-        parts.append(f"Posiciones cercanas: {home} {hr}º ({hp} pts) vs {away} {ar}º ({ap} pts)")
+    h_liga, a_liga = ctx['home_liga'], ctx['away_liga']
+    h_total, a_total = ctx['home_total_teams'], ctx['away_total_teams']
     
-    # Relegation zone
+    # Different league match indicator
+    same_league = (h_liga == a_liga)
+    
+    # Position context (per-league)
+    if same_league:
+        liga_short = '1ª' if h_liga == 'La Liga' else '2ª'
+        if hr <= 4 and ar > h_total - 5:
+            parts.append(f"{home} {hr}º ({hp} pts) vs {away} {ar}º ({ap} pts) en {liga_short}")
+        elif ar <= 4 and hr > h_total - 5:
+            parts.append(f"{away} {ar}º ({ap} pts) vs {home} {hr}º ({hp} pts) en {liga_short}")
+        elif abs(hr - ar) > 8:
+            parts.append(f"Gran diferencia: {home} {hr}º vs {away} {ar}º ({liga_short})")
+        else:
+            parts.append(f"{home} {hr}º ({hp} pts) vs {away} {ar}º ({ap} pts) [{liga_short}]")
+    else:
+        h_short = '1ª' if h_liga == 'La Liga' else '2ª'
+        a_short = '1ª' if a_liga == 'La Liga' else '2ª'
+        parts.append(f"{home} {hr}º de {h_short} ({hp} pts) vs {away} {ar}º de {a_short} ({ap} pts)")
+    
+    # Relegation zone (per-league thresholds)
     for team, prefix in [(home, 'home'), (away, 'away')]:
         rank = ctx[f'{prefix}_rank']
-        if rank >= 18:
-            parts.append(f"⚠️ {team} en zona de descenso ({rank}º)")
+        total = ctx[f'{prefix}_total_teams']
+        liga_name = ctx[f'{prefix}_liga']
+        releg_threshold = total - 2  # Last 3 for both leagues
+        if rank >= releg_threshold:
+            liga_s = '1ª' if liga_name == 'La Liga' else '2ª'
+            parts.append(f"⚠️ {team} {rank}º/{total} en {liga_s} (descenso)")
     
     # Form
     hf, af = ctx['home_form_pts'], ctx['away_form_pts']
