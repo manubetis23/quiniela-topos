@@ -104,6 +104,158 @@ def build_dataset_for_prediction(matches, df_hist):
     df_pred = df_pred[predictoras]
     return df_pred
 
+def generate_context_data(home, away, df_hist):
+    """Extract contextual data about both teams for explanation generation."""
+    ctx = {'home': home, 'away': away}
+    
+    df_hist['DateObj'] = pd.to_datetime(df_hist['Date'], format='%d/%m/%Y')
+    
+    for team, prefix in [(home, 'home'), (away, 'away')]:
+        matches = df_hist[(df_hist['HomeTeam'] == team) | (df_hist['AwayTeam'] == team)].sort_values('DateObj')
+        if matches.empty:
+            ctx[f'{prefix}_pts'] = 0
+            ctx[f'{prefix}_rank'] = 20
+            ctx[f'{prefix}_form'] = 'N/A'
+            ctx[f'{prefix}_form_pts'] = 0
+            ctx[f'{prefix}_gf_avg'] = 0
+            ctx[f'{prefix}_gc_avg'] = 0
+            ctx[f'{prefix}_liga'] = 'Desconocida'
+            continue
+        
+        last = matches.iloc[-1]
+        is_home = last['HomeTeam'] == team
+        pts_pre = last['Home_Points_Pre'] if is_home else last['Away_Points_Pre']
+        result = last['FTR']
+        pts_add = 3 if (is_home and result == 'H') or (not is_home and result == 'A') else (1 if result == 'D' else 0)
+        ctx[f'{prefix}_pts'] = int(pts_pre) + pts_add if pd.notna(pts_pre) else 0
+        
+        rank_pre = last['Home_Rank_Pre'] if is_home else last['Away_Rank_Pre']
+        ctx[f'{prefix}_rank'] = int(rank_pre) if pd.notna(rank_pre) else 20
+        ctx[f'{prefix}_liga'] = str(last.get('Competicion', 'La Liga'))
+        
+        # Form last 5
+        last5 = matches.tail(5)
+        form_letters = []
+        form_pts = 0
+        for _, m in last5.iterrows():
+            is_h = m['HomeTeam'] == team
+            won = (is_h and m['FTR'] == 'H') or (not is_h and m['FTR'] == 'A')
+            drew = m['FTR'] == 'D'
+            if won: form_letters.append('V'); form_pts += 3
+            elif drew: form_letters.append('E'); form_pts += 1
+            else: form_letters.append('D')
+        ctx[f'{prefix}_form'] = ''.join(form_letters)
+        ctx[f'{prefix}_form_pts'] = form_pts
+        
+        # Goals averages (last 5)
+        gf_list = []
+        gc_list = []
+        for _, m in last5.iterrows():
+            is_h = m['HomeTeam'] == team
+            gf_list.append(int(m['FTHG'] if is_h else m['FTAG']))
+            gc_list.append(int(m['FTAG'] if is_h else m['FTHG']))
+        ctx[f'{prefix}_gf_avg'] = round(sum(gf_list)/len(gf_list), 1) if gf_list else 0
+        ctx[f'{prefix}_gc_avg'] = round(sum(gc_list)/len(gc_list), 1) if gc_list else 0
+        
+        # Home-specific / Away-specific record
+        if prefix == 'home':
+            home_matches = df_hist[df_hist['HomeTeam'] == team]
+            if len(home_matches) >= 3:
+                hm = home_matches.tail(5)
+                hw = sum(1 for _, m in hm.iterrows() if m['FTR'] == 'H')
+                ctx['home_home_record'] = f"{hw}V de {len(hm)} en casa"
+            else:
+                ctx['home_home_record'] = None
+        else:
+            away_matches = df_hist[df_hist['AwayTeam'] == team]
+            if len(away_matches) >= 3:
+                am = away_matches.tail(5)
+                aw = sum(1 for _, m in am.iterrows() if m['FTR'] == 'A')
+                ctx['away_away_record'] = f"{aw}V de {len(am)} fuera"
+            else:
+                ctx['away_away_record'] = None
+    
+    # H2H
+    h2h = df_hist[((df_hist['HomeTeam'] == home) & (df_hist['AwayTeam'] == away)) |
+                   ((df_hist['HomeTeam'] == away) & (df_hist['AwayTeam'] == home))].sort_values('DateObj')
+    if not h2h.empty:
+        h2h_last3 = h2h.tail(3)
+        h2h_results = []
+        for _, m in h2h_last3.iterrows():
+            if m['HomeTeam'] == home:
+                if m['FTR'] == 'H': h2h_results.append(f"{home}")
+                elif m['FTR'] == 'D': h2h_results.append("Empate")
+                else: h2h_results.append(f"{away}")
+            else:
+                if m['FTR'] == 'A': h2h_results.append(f"{home}")
+                elif m['FTR'] == 'D': h2h_results.append("Empate")
+                else: h2h_results.append(f"{away}")
+        ctx['h2h'] = h2h_results
+    else:
+        ctx['h2h'] = None
+    
+    return ctx
+
+def generate_explanation(home, away, p1, pX, p2, df_hist):
+    """Generate a human-readable explanation of why the AI predicts these percentages."""
+    ctx = generate_context_data(home, away, df_hist)
+    
+    parts = []
+    max_prob = max(p1, pX, p2)
+    fav = home if p1 == max_prob else ('Empate' if pX == max_prob else away)
+    
+    # Position context
+    hr, ar = ctx['home_rank'], ctx['away_rank']
+    hp, ap = ctx['home_pts'], ctx['away_pts']
+    if hr <= 4 and ar > 15:
+        parts.append(f"{home} es {hr}º ({hp} pts) vs {away} {ar}º ({ap} pts)")
+    elif ar <= 4 and hr > 15:
+        parts.append(f"{away} es {ar}º ({ap} pts) jugando contra {home} {hr}º ({hp} pts)")
+    elif abs(hr - ar) > 8:
+        parts.append(f"Gran diferencia en liga: {home} {hr}º vs {away} {ar}º")
+    else:
+        parts.append(f"Posiciones cercanas: {home} {hr}º ({hp} pts) vs {away} {ar}º ({ap} pts)")
+    
+    # Relegation zone
+    for team, prefix in [(home, 'home'), (away, 'away')]:
+        rank = ctx[f'{prefix}_rank']
+        if rank >= 18:
+            parts.append(f"⚠️ {team} en zona de descenso ({rank}º)")
+    
+    # Form
+    hf, af = ctx['home_form_pts'], ctx['away_form_pts']
+    if hf >= 12:
+        parts.append(f"{home} en racha: {ctx['home_form']} ({hf}/15 pts)")
+    elif hf <= 4:
+        parts.append(f"{home} en mala racha: {ctx['home_form']} ({hf}/15 pts)")
+    if af >= 12:
+        parts.append(f"{away} en racha: {ctx['away_form']} ({af}/15 pts)")
+    elif af <= 4:
+        parts.append(f"{away} en mala racha: {ctx['away_form']} ({af}/15 pts)")
+    
+    # Home/away factor
+    if ctx.get('home_home_record'):
+        parts.append(f"En casa: {ctx['home_home_record']}")
+    if ctx.get('away_away_record'):
+        parts.append(f"Fuera: {ctx['away_away_record']}")
+    
+    # Goals
+    hgf, agf = ctx['home_gf_avg'], ctx['away_gf_avg']
+    hgc, agc = ctx['home_gc_avg'], ctx['away_gc_avg']
+    if hgf >= 2.0:
+        parts.append(f"{home} ofensivo ({hgf} goles/partido)")
+    if agc >= 2.0:
+        parts.append(f"{away} encaja mucho ({agc} goles/partido)")
+    if agf >= 2.0 and p2 > 0.35:
+        parts.append(f"{away} también goleador ({agf} goles/partido)")
+    
+    # H2H
+    if ctx['h2h']:
+        h2h_str = ", ".join(ctx['h2h'])
+        parts.append(f"H2H reciente: {h2h_str}")
+    
+    return " · ".join(parts[:4])  # Max 4 factors to keep it readable
+
 def generar_quiniela_optima(return_json=False):
     if not return_json:
         print("=======================================================")
@@ -142,13 +294,16 @@ def generar_quiniela_optima(return_json=False):
         
         entropia = - (p1 * np.log2(p1 + 1e-9) + pX * np.log2(pX + 1e-9) + p2 * np.log2(p2 + 1e-9))
         
+        explicacion = generate_explanation(home, away, p1, pX, p2, df)
+        
         resultados.append({
             'Partido_Id': i+1,
             'Home': home,
             'Away': away,
             'Partido': f"{home} - {away}",
             'P1': round(p1, 4), 'PX': round(pX, 4), 'P2': round(p2, 4),
-            'Incertidumbre': round(float(entropia), 4)
+            'Incertidumbre': round(float(entropia), 4),
+            'Explicacion': explicacion
         })
 
     df_res = pd.DataFrame(resultados)
@@ -204,6 +359,13 @@ def generar_quiniela_optima(return_json=False):
         
     print("-------------------------------------------------------------")
 
+    if pleno_al_quince is not None:
+        p_orden = [('1', pleno_al_quince['P1']), ('X', pleno_al_quince['PX']), ('2', pleno_al_quince['P2'])]
+        p_orden.sort(key=lambda x: x[1], reverse=True)
+        print(f"15. {pleno_al_quince['Partido']:<30} | {pleno_al_quince['P1']*100:>4.1f}% {pleno_al_quince['PX']*100:>4.1f}% {pleno_al_quince['P2']*100:>4.1f}% | >> {p_orden[0][0]:<8} (Pleno al 15)")
+
+    print("=============================================================\n")
+
 def predict_custom_matches(matches_list):
     """Predict custom matches provided as list of (home, away) tuples."""
     df = pd.read_csv('LaLiga_ML_Dataset.csv')
@@ -222,6 +384,8 @@ def predict_custom_matches(matches_list):
         p2 = float(probabilidades[i][2])
         entropia = - (p1 * np.log2(p1 + 1e-9) + pX * np.log2(pX + 1e-9) + p2 * np.log2(p2 + 1e-9))
         
+        explicacion = generate_explanation(home, away, p1, pX, p2, df)
+        
         orden = [('1', p1), ('X', pX), ('2', p2)]
         orden.sort(key=lambda x: x[1], reverse=True)
         
@@ -231,6 +395,7 @@ def predict_custom_matches(matches_list):
             'Partido': f"{home} - {away}",
             'P1': round(p1, 4), 'PX': round(pX, 4), 'P2': round(p2, 4),
             'Incertidumbre': round(float(entropia), 4),
+            'Explicacion': explicacion,
             'Apuesta': orden[0][0],
             'Tipo': 'Fijo'
         })
