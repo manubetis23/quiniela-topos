@@ -4,7 +4,6 @@ import joblib
 import warnings
 warnings.filterwarnings('ignore')
 
-from get_quiniela_matches import obtener_jornada_quiniela
 from lae_scraper import get_lae_percentages
 
 def build_dataset_for_prediction(matches, df_hist):
@@ -371,6 +370,9 @@ def generate_explanation(home, away, p1, pX, p2, df_hist):
     return " · ".join(parts[:4])  # Max 4 factors to keep it readable
 
 def generar_quiniela_optima(return_json=False):
+    # Import aquí para evitar cargar Playwright en Render (solo se usa en modo local)
+    from get_quiniela_matches import obtener_jornada_quiniela
+    
     if not return_json:
         print("=======================================================")
         print("      ORQUESTADOR PREDICTIVO: QUINIELA INTELIGENTE     ")

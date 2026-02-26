@@ -52,6 +52,8 @@ def api_clasificacion():
     try:
         df = pd.read_csv('LaLiga_ML_Dataset.csv')
         df['DateObj'] = pd.to_datetime(df['Date'], format='%d/%m/%Y')
+        # FILTRAR SOLO TEMPORADA ACTUAL
+        df = df[df['Season'] == df['Season'].max()].copy()
         
         all_teams = set(df['HomeTeam'].unique()) | set(df['AwayTeam'].unique())
         
@@ -135,6 +137,8 @@ def api_stats(equipo):
     try:
         df = pd.read_csv('LaLiga_ML_Dataset.csv')
         df['DateObj'] = pd.to_datetime(df['Date'], format='%d/%m/%Y')
+        # FILTRAR SOLO TEMPORADA ACTUAL
+        df = df[df['Season'] == df['Season'].max()].copy()
         
         team_matches = df[(df['HomeTeam'] == equipo) | (df['AwayTeam'] == equipo)].copy()
         team_matches = team_matches.sort_values('DateObj')
@@ -218,6 +222,8 @@ def api_evolucion():
     try:
         df = pd.read_csv('LaLiga_ML_Dataset.csv')
         df['DateObj'] = pd.to_datetime(df['Date'], format='%d/%m/%Y')
+        # FILTRAR SOLO TEMPORADA ACTUAL
+        df = df[df['Season'] == df['Season'].max()].copy()
         df = df.sort_values('DateObj')
         
         all_teams = sorted(list(set(df['HomeTeam'].unique()) | set(df['AwayTeam'].unique())))
